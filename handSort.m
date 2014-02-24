@@ -64,6 +64,8 @@ peakThreshFactor = 2;       % Filters out small peaks in residual for seeking
 mainWindowPosition = [ 1027         588        1916         588];
 spikeAvgWindowPosition = [ 1027         230         390         274];
 pointViewWindowPosition = [1421         230         390         274];
+ISIhistogramWindowPosition = [1815         230         390         274];
+
 axisPosition = [.05 .05 .9 .9];
 
 % saveFilename = 'handSortedSpikes.mat';
@@ -121,10 +123,12 @@ getResidualPeaks(data)
 pointFig = figure();
 plotFig = figure;
 avgFig = figure;
+histFig = figure;
 % Do the initial plots
 rePlot();
 plotAvgSpikes();
 pointViewPlot();
+ISIhistPlot();
 
 % Save a copy of the data before any sorting changes
 originalData = data;
@@ -374,6 +378,9 @@ originalData = data;
         % Update the point view
         pointViewPlot();
         
+        % Update the histogram
+        ISIhistPlot();
+        
         figure(plotFig);
         clf;
         plot(time,dVdT,'k'); hold on;
@@ -393,7 +400,7 @@ originalData = data;
         for clustNn = 1:length(clusterList)
             clustN = clusterList(clustNn);
             ix = find(data.spikeClusters == clustN);
-            scatter(time(data.spikeSamples(ix)),dVdT(data.spikeSamples(ix)),...
+            scatter(time(data.spikeSamples(ix)),dVdT(data.spikeSamples(ix)) - 20*(clustN-1),...
                 'Marker','.','MarkerEdgeColor',colorList(clustN));
         end
         set(gcf,'Position',mainWindowPosition);
@@ -552,7 +559,25 @@ originalData = data;
         centerLineHandle = plot(plotPosition.*[1 1],ylim(),'k--');
         
     end
+    
+    function ISIhistPlot()
         
+        figure(histFig); clf;
+        clusterNumbers = unique(data.spikeClusters);
+        nClusters = length(clusterNumbers);
+        for clustNn = 1:nClusters
+            clustN = clusterNumbers(clustNn);
+            cIX = find(data.spikeClusters == clustN);
+            samples = data.spikeSamples(cIX);
+            sortedSamples = sort(samples,'ascend');
+            ISIs = diff(sortedSamples)./data.sampleRate;
+            [N,xout] = hist(ISIs,[0:.001:.10]);
+            plot(xout(1:(end-1)),N(1:(end-1)),'Color', colorList(clustN)); hold on;           
+        end
+        xlabel('ISI (s)'); ylabel('N');
+        set(gcf,'Position',ISIhistogramWindowPosition);
+        figure(plotFig);
+    end
         
 end
     

@@ -15,11 +15,11 @@
 %
 function [data, lastMetric] = corrSortFast(data)
 
-    displayOn = false;   % Allow output to screen
+    displayOn = false;  % Allow output to screen
     chunkSize = 5;      % Spike widths
     maxZeroRounds = 10; % Consecutive rounds of sorting with zero spikes before exit.
-    spikeThresh = 0;    % Spikes must lower noise power more than spikeThresh*their own power
-    
+    spikeThresh = .05;  % Spikes must lower noise power more than spikeThresh*their own power
+    refractoryPeriod = .002; % Don't place same spikes within (ms)
     
     % Get the filtered voltage, and use it as the current residual
     dVdT = data.dVdT; 
@@ -87,6 +87,16 @@ function [data, lastMetric] = corrSortFast(data)
                 % Normalize scores by the spike size - give bigger spikes 
                 % better scores. Also, give bigger peaks bigger scores
                 corrScore(clustN,corrPeakSamp) = spikeStd(clustN)*abs(dVdT(corrPeakSamp)).*log10(1./abs(1 - corrPeaks));  
+                
+                % Set scores within refractoryPeriod to zero
+                cIX = find(data.spikeClusters == clustN);
+                existingSpikeSamples = data.spikeSamples(cIX);
+                if length(existingSpikeSamples) > 0
+                    closestSampleIX = dsearchn(existingSpikeSamples',corrPeakSamp);
+                    distances = abs(corrPeakSamp - existingSpikeSamples(closestSampleIX)');
+                    zIX = find(distances < refractoryPeriod*data.sampleRate);
+                    corrScore(clustN,corrPeakSamp(zIX)) = -Inf;
+                end
                 % disp(clustN);
             end
         end
@@ -128,6 +138,14 @@ function [data, lastMetric] = corrSortFast(data)
             	totalSpikesAdded = totalSpikesAdded + 1;
                 data.spikeSamples(end+1)  = bestSample(chunkN) + chunkNS(chunkN) - 1;
                 data.spikeClusters(end+1) = bestCluster(chunkN);
+                
+                % Trap low ISIs
+%                 cIX = find(data.spikeClusters == data.spikeClusters(end));
+%                 unsortedCSamp = data.spikeSamples(cIX);
+%                 cSamp = sort(unsortedCSamp,'ascend');
+%                 diffSamp = diff(cSamp);
+%                 min(diffSamp)
+                
                 if displayOn
                     fprintf('|');
                 end

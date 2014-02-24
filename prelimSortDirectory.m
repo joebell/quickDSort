@@ -12,7 +12,7 @@ function prelimSortDirectory()
 
     plotN = 1;
     page = 1;
-    for fileN = 1:4%length(fileList)
+    for fileN = 1:length(fileList)
     
     	load([baseName,fileList(fileN).name]);
     	if (true) %data.stimulus.stimNumber == 5
